@@ -11,8 +11,6 @@
  * pin 15 SDA``
  ****************END**********************/
 
-unsigned int tim1_cnt = 0;
-
 const int ds3231 = 0xD0;
 
 unsigned int bin_To_Octal(unsigned int c) {
@@ -21,6 +19,22 @@ unsigned int bin_To_Octal(unsigned int c) {
 
 unsigned int octal_To_Bin(unsigned int b) {
     return ((b & 0xf0) >> 4) * 10 + (b & 0x0f);
+}
+
+unsigned int setTime[3] = {
+    33, 11, 14 
+};
+
+void SetTime(void) {
+    unsigned int i;
+    I2C_StartCondition();
+    I2C_Write_Byte(ds3231);
+    I2C_Write_Byte(0);
+    while (BF);
+    for (i = 0; i < 3; i++) {
+        I2C_Write_Byte(bin_To_Octal(setTime[i]));
+    }
+    I2C_StopCondition();
 }
 
 void TIM1_init() {
@@ -42,23 +56,25 @@ void interrupt tim_1(void) {
         TMR1L = 0xff;
         TMR1H = 0x7f;
         TMR1IF = 0;
-        tim1_cnt++;
-        if (tim1_cnt > 59)tim1_cnt = 0;
+        PORTB ^= 0x10;
     }
 }
 
 void main(void) {
+    PORTB = 0x00; //PB4 OUT
+    TRISB = 0x00;
     InitI2C();
     TIM1_init();
     I2C_Send_Data(0x0f, 0x00, 0x01); //Unlock 
     I2C_LCD_Clear();
+    //SetTime();
     while (1) {
         unsigned int i;
         unsigned int buf[3];
 
         I2C_StartCondition();
-        I2C_Write_Byte(ds3231); //address 
-        I2C_Write_Byte(0x00); //address 
+        I2C_Write_Byte(ds3231); 
+        I2C_Write_Byte(0x00); 
         while (BF);
         I2C_Idle();
         SSPIF = 0;
