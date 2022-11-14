@@ -21,21 +21,6 @@ unsigned int binDec_To_dec(unsigned int b) {
     return ((b & 0xf0) >> 4) * 10 + (b & 0x0f);
 }
 
-void SetTime(void) {
-    unsigned int setTime[3] = {
-        33, 26, 8
-    };
-    unsigned int i;
-    I2C_StartCondition();
-    I2C_Write_Byte(ds3231);
-    I2C_Write_Byte(0);
-    while (BF);
-    for (i = 0; i < 3; i++) {
-        I2C_Write_Byte(dec_To_BinDec(setTime[i]));
-    }
-    I2C_StopCondition();
-}
-
 void TIM1_init() {
     T1CKPS0 = 1;
     T1CKPS1 = 1;
@@ -50,6 +35,7 @@ void TIM1_init() {
 }
 
 unsigned char flag_btn = 0;
+
 void interrupt tim_1(void) {
 
     if (TMR1IE && TMR1IF) {
@@ -65,6 +51,62 @@ void interrupt tim_1(void) {
     }
 }
 
+void getDataDs3231(unsigned char address) {
+    unsigned char i;
+    unsigned int buf[3];
+
+    I2C_StartCondition();
+    I2C_Write_Byte(ds3231);
+    I2C_Write_Byte(address);
+    while (BF);
+    I2C_Idle();
+    SSPIF = 0;
+    RSEN = 1;
+    I2C_IntWait();
+    I2C_Write_Byte(0xD0 | 0x01);
+    for (i = 0; i < 3; i++) {
+        if (i < (3 - 1)) {
+            buf[i] = binDec_To_dec(I2C_ReceiveByte_Ack());
+        } else {
+            buf[i] = binDec_To_dec(I2C_ReceiveByte_Nack());
+        }
+    }
+    I2C_StopCondition();
+    I2C_LCD_seg_conv(buf[2], buf[1], buf[0]);
+    I2C_LCD_print_time();
+}
+
+void SetTime(void) {
+    unsigned int setTime[3] = {
+        33, 26, 8
+    };
+    unsigned int i;
+    I2C_StartCondition();
+    I2C_Write_Byte(ds3231);
+    I2C_Write_Byte(0);
+    while (BF);
+    for (i = 0; i < 3; i++) {
+        I2C_Write_Byte(dec_To_BinDec(setTime[i]));
+    }
+    I2C_StopCondition();
+}
+
+void SetData(void) {
+    unsigned int setTime[3] = {
+        14, 11, 22
+    };
+    unsigned int i;
+    I2C_StartCondition();
+    I2C_Write_Byte(ds3231);
+    I2C_Write_Byte(0x04);
+    while (BF);
+    for (i = 0; i < 3; i++) {
+        I2C_Write_Byte(dec_To_BinDec(setTime[i]));
+    }
+    I2C_StopCondition();
+}
+
+
 void main(void) {
     InitI2C();
     TIM1_init();
@@ -73,36 +115,15 @@ void main(void) {
 
     PORTB = 0x00; //PB4 OUT PB0 INPUT
     TRISB = 0x01;
-
+    //SetData();
     //SetTime();
     while (1) {
-        unsigned int i;
-        unsigned int buf[3];
-        
-        if(flag_btn){
+        if (flag_btn) {
             I2C_LCD_Clear();
+            getDataDs3231(0x04);
             flag_btn = 0;
-            __delay_ms(500);
+            __delay_ms(1000);
         }
-        I2C_StartCondition();
-        I2C_Write_Byte(ds3231);
-        I2C_Write_Byte(0x00);
-        while (BF);
-        I2C_Idle();
-        SSPIF = 0;
-        RSEN = 1;
-        I2C_IntWait();
-        I2C_Write_Byte(0xD0 | 0x01);
-        for (i = 0; i < 3; i++) {
-            if (i < (3 - 1)) {
-                buf[i] = binDec_To_dec(I2C_ReceiveByte_Ack());
-            } else {
-                buf[i] = binDec_To_dec(I2C_ReceiveByte_Nack());
-            }
-        }
-        I2C_StopCondition();
-
-        I2C_LCD_seg_conv(buf[2], buf[1], buf[0]);
-        I2C_LCD_print_time();
+        getDataDs3231(0x00);
     }
 }
