@@ -12,6 +12,7 @@
  ****************END**********************/
 
 const int ds3231 = 0xD0;
+unsigned char flag_btn = 0;
 
 unsigned int dec_To_BinDec(unsigned int c) {
     return ((c / 10) << 4) | (c % 10);
@@ -21,7 +22,7 @@ unsigned int binDec_To_dec(unsigned int b) {
     return ((b & 0xf0) >> 4) * 10 + (b & 0x0f);
 }
 
-void TIM1_init() {
+void TIM1_init(void) {
     T1CKPS0 = 1;
     T1CKPS1 = 1;
     TMR1CS = 0; //Internal clock
@@ -34,10 +35,22 @@ void TIM1_init() {
     TMR1ON = 1;
 }
 
-unsigned char flag_btn = 0;
+//void TIM0_init(void) {
+//    GIE = 1;
+//    TMR0ON = 1; // On
+//    T08BIT = 1; // 8bit
+//    T0CS = 0; //Internal instruction cycle clock
+//    PSA = 0; //Prescaller On
+//    // 1:256
+//    T0PS2 = 1;
+//    T0PS1 = 1;
+//    T0PS0 = 1;
+//    TMR0IE = 1;
+//    TMR0IF = 0;
+//    TMR0L = 0x00;
+//}
 
-void interrupt tim_1(void) {
-
+void interrupt Timers(void) {
     if (TMR1IE && TMR1IF) {
         TMR1L = 0xff;
         TMR1H = 0x7f;
@@ -106,7 +119,6 @@ void SetData(void) {
     I2C_StopCondition();
 }
 
-
 void main(void) {
     InitI2C();
     TIM1_init();
@@ -125,5 +137,6 @@ void main(void) {
             __delay_ms(1000);
         }
         getDataDs3231(0x00);
+
     }
 }
