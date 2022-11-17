@@ -13,6 +13,7 @@
 
 const int ds3231 = 0xD0;
 unsigned char flag_btn = 0;
+unsigned int tim1Count = 0;
 
 unsigned int dec_To_BinDec(unsigned int c) {
     return ((c / 10) << 4) | (c % 10);
@@ -55,11 +56,20 @@ void interrupt Timers(void) {
         TMR1L = 0xff;
         TMR1H = 0x7f;
         TMR1IF = 0;
-        if (RB0 == 0x01) {
+        if (RB0 == 1) {
             PORTB &= ~0x02;
+            flag_btn = 1;
+        } else if (RB2 == 1){
+            flag_btn = 1;
+        } else if (RB3 == 1){
             flag_btn = 1;
         } else {
             PORTB ^= 0x02;
+            tim1Count++;
+            if (tim1Count > 50){
+                flag_btn = 1;
+                tim1Count = 0;
+            }
         }
     }
 }
@@ -126,7 +136,7 @@ void main(void) {
     I2C_LCD_Clear();
 
     PORTB = 0x00; //PB4 OUT PB0 INPUT
-    TRISB = 0x01;
+    TRISB = 0x0D;
     //SetData();
     //SetTime();
     while (1) {
