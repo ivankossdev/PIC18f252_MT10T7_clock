@@ -25,21 +25,17 @@ void interrupt Timers(void) {
         TMR1L = 0xff;
         TMR1H = 0x7f;
         TMR1IF = 0;
-        if (RB0 == 1) {
-            PORTB &= ~0x02;
-            
-        } else {
-            PORTB ^= 0x02;
-            tim1Count++;
-            if (tim1Count > 50) {
-                flag_tim1 = 1;
-                tim1Count = 0;
-            }
+        PORTB ^= 0x02;
+        tim1Count++;
+        if (tim1Count > 50) {
+            flag_tim1 = 1;
+            tim1Count = 0;
         }
     } else if (INT0IE && INT0IF){
         INT0IE = 0;
         TMR1IE = 0;
         flag_menu = 1;
+        PORTB &= ~0x02;
     }
 }
 
@@ -83,7 +79,7 @@ void main(void) {
             I2C_LCD_Clear();
             if (ButtonHandler(RB0)){
                 PORTB |= 0x02;
-            } else if (RB2){
+            } else if (ButtonHandler(RB2)){
                 TMR1IE = 1;
                 TMR1IF = 0;
                 INT0IE = 1;
@@ -112,7 +108,7 @@ unsigned char ButtonHandler(int but) {
     while (but) {
         if (butCount < 10000) {
             butCount++;
-        } else {
+        } else {       
             result = 1;
             break;
         }
