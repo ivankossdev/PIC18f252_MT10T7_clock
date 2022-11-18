@@ -14,11 +14,13 @@
 const int ds3231 = 0xD0;
 unsigned char flag_tim1 = 0;
 unsigned char flag_menu = 0;
+unsigned char flag_clear = 1;
 unsigned int tim1Count = 0;
 
 unsigned int dec_To_BinDec(unsigned int c);
 unsigned int binDec_To_dec(unsigned int b);
 void TIM1_init(void);
+void Int0Init(void);
 
 void interrupt Timers(void) {
     if (TMR1IE && TMR1IF) {
@@ -51,10 +53,8 @@ void getDataDs3231(unsigned char address);
 void SetTime(void);
 void SetData(void);
 
-void Int0Init(void){
-    INT0IE = 1;
-    INT0IF = 0;
-    INTEDG0 = 1;
+void Menu(unsigned char menu){
+    I2C_LCD_Send_Char(1, menu, 0);
 }
 
 void main(void) {
@@ -66,6 +66,7 @@ void main(void) {
 
     PORTB = 0x00; //PB4 OUT PB0 INPUT
     TRISB = 0x0D;
+    unsigned char menu = 0;
     //SetData();
     //SetTime();
     while (1) {
@@ -76,15 +77,23 @@ void main(void) {
             __delay_ms(1000);
             I2C_LCD_Clear();
         } else if (flag_menu){
-            I2C_LCD_Clear();
+            if (flag_clear){
+                I2C_LCD_Clear();
+                flag_clear = 0;
+            }
             if (ButtonHandler(RB0)){
+                Menu(menu);
                 PORTB |= 0x02;
+                menu++;
+                if(menu > 9) menu = 0;
             } else if (ButtonHandler(RB2)){
                 TMR1IE = 1;
                 TMR1IF = 0;
                 INT0IE = 1;
                 INT0IF = 0;
                 flag_menu = 0;
+                flag_clear = 1;
+                menu = 0;
                 tim1Count = 0;
                 PORTB &= ~0x02;
             }          
@@ -114,6 +123,12 @@ unsigned char ButtonHandler(int but) {
         }
     }
     return result;
+}
+
+void Int0Init(void){
+    INT0IE = 1;
+    INT0IF = 0;
+    INTEDG0 = 1;
 }
 
 void TIM1_init(void) {
