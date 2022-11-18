@@ -27,7 +27,7 @@ void interrupt Timers(void) {
         TMR1IF = 0;
         if (RB0 == 1) {
             PORTB &= ~0x02;
-            flag_menu = 1;
+            
         } else {
             PORTB ^= 0x02;
             tim1Count++;
@@ -36,6 +36,10 @@ void interrupt Timers(void) {
                 tim1Count = 0;
             }
         }
+    } else if (INT0IE && INT0IF){
+        INT0IE = 0;
+        TMR1IE = 0;
+        flag_menu = 1;
     }
 }
 
@@ -51,8 +55,15 @@ void getDataDs3231(unsigned char address);
 void SetTime(void);
 void SetData(void);
 
+void Int0Init(void){
+    INT0IE = 1;
+    INT0IF = 0;
+    INTEDG0 = 1;
+}
+
 void main(void) {
     InitI2C();
+    Int0Init();
     TIM1_init();
     I2C_Send_Data(0x0f, 0x00, 0x01); //Unlock 
     I2C_LCD_Clear();
@@ -67,15 +78,18 @@ void main(void) {
             getDataDs3231(0x04);
             flag_tim1 = 0;
             __delay_ms(1000);
-        } else if (flag_menu){
-            TMR1IE = 0;
             I2C_LCD_Clear();
-            if (ButtonHandler(RB2)){
+        } else if (flag_menu){
+            I2C_LCD_Clear();
+            if (ButtonHandler(RB0)){
                 PORTB |= 0x02;
-            } else if (RB3){
+            } else if (RB2){
                 TMR1IE = 1;
                 TMR1IF = 0;
+                INT0IE = 1;
+                INT0IF = 0;
                 flag_menu = 0;
+                tim1Count = 0;
                 PORTB &= ~0x02;
             }          
         } else {
