@@ -54,7 +54,7 @@ void getDataDs3231(unsigned char address);
 void SetTime(void);
 void SetData(void);
 
-struct Data {
+struct MenuPoints {
     unsigned char step;
     unsigned int setHr;
     unsigned int setMin;
@@ -64,9 +64,10 @@ struct Data {
     unsigned int setMonth;
     unsigned int setDate;
     unsigned char sub_menu;
+    unsigned char flag_confirmation;
 };
 
-struct Data d;
+struct MenuPoints d;
 
 void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) {
     do {
@@ -104,19 +105,27 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
         if (ButtonHandler(PORTBbits.RB0)) {
             d.step++;
         }
+        if (ButtonHandler(PORTBbits.RB3)) {
+            d.flag_confirmation = 1;
+        }
     } while (d.step <= 2);
 }
 
 void SubMenu(unsigned char _sub_menu) {
     d.step = 0;
+    d.flag_confirmation = 0;
     switch (_sub_menu) {
         case 0:
             SubMenuHandler(&d.setHr, &d.setMin, &d.setSec);
-            SetTime();
+            if (d.flag_confirmation) {
+                SetTime();
+            }
             break;
         case 1:
             SubMenuHandler(&d.setYear, &d.setMonth, &d.setDate);
-            SetData();
+            if (d.flag_confirmation) {
+                SetData();
+            }
             break;
         case 2:
             I2C_LCD_seg_conv(0, 0, 10);
