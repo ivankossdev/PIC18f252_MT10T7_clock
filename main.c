@@ -12,6 +12,7 @@
  *******************END******************/
 
 const int ds3231 = 0xD0;
+const char step_menu = 3;
 unsigned char flag_tim1 = 0;
 unsigned char flag_menu = 0;
 unsigned char flag_clear = 1;
@@ -33,7 +34,7 @@ void interrupt Timers(void) {
             flag_tim1 = 1;
             tim1Count = 0;
         }
-    } else if (INT0IE && INT0IF){
+    } else if (INT0IE && INT0IF) {
         INT0IE = 0;
         TMR1IE = 0;
         flag_menu = 1;
@@ -53,8 +54,82 @@ void getDataDs3231(unsigned char address);
 void SetTime(void);
 void SetData(void);
 
-void Menu(unsigned char menu){
-    I2C_LCD_Send_Char(1, menu, 0);
+struct Data {
+    unsigned char step;
+    unsigned int setHr;
+    unsigned int setMin;
+    unsigned int setSec;
+    unsigned int setDay;
+    unsigned char sub_menu;
+};
+
+struct Data d;
+
+void SubMenu(unsigned char _sub_menu) {
+    d.step = 0;
+    switch (_sub_menu) {
+        case 0:
+            do {
+                PORTB &= ~0x02;
+                if (d.step == 0) {
+                    I2C_LCD_seg_conv(d.setHr, d.setMin, d.setSec);
+                    I2C_LCD_print_time();
+                    if (ButtonHandler(RB2)) {
+                        d.setHr++;
+                    } else if (ButtonHandler(RB3)) {
+                        d.setHr--;
+                    }
+                }
+                if (ButtonHandler(RB0)) {
+                    d.step++;
+                }
+                if (d.step == 1) {
+                    I2C_LCD_seg_conv(d.setHr, d.setMin, d.setSec);
+                    I2C_LCD_print_time();
+                    if (ButtonHandler(RB2)) {
+                        d.setMin++;
+                    } else if (ButtonHandler(RB3)) {
+                        d.setMin--;
+                    }
+                }
+                if (d.step == 2) {
+                    I2C_LCD_seg_conv(d.setHr, d.setMin, d.setSec);
+                    I2C_LCD_print_time();
+                    if (ButtonHandler(RB2)) {
+                        d.setSec++;
+                    } else if (ButtonHandler(RB3)) {
+                        d.setSec--;
+                    }
+                }
+                if (ButtonHandler(RB0)) {
+                    d.step++;
+                }
+            } while (d.step <= 2);
+
+            break;
+        case 1:
+            I2C_LCD_seg_conv(0, 10, 0);
+            I2C_LCD_print_time();
+            break;
+        case 2:
+            I2C_LCD_seg_conv(0, 0, 10);
+            I2C_LCD_print_time();
+            break;
+    }
+}
+
+void Menu(unsigned char menu) {
+    I2C_LCD_Send_Char(9, menu, 0);
+    switch (menu) {
+        case 0: SubMenu(d.sub_menu);
+            break;
+        case 1: SubMenu(d.sub_menu);
+            break;
+        case 2: SubMenu(d.sub_menu);
+            break;
+    }
+    d.sub_menu++;
+    if (d.sub_menu == step_menu) d.sub_menu = 0;
 }
 
 void main(void) {
@@ -70,23 +145,23 @@ void main(void) {
     //SetData();
     //SetTime();
     while (1) {
-        if (flag_tim1) {
-            I2C_LCD_Clear();
+        if (flag_tim1) { //Показывает дату по прерыванию 
+            I2C_LCD_Clear(); //таймера tim1 
             getDataDs3231(0x04);
             flag_tim1 = 0;
             __delay_ms(1000);
             I2C_LCD_Clear();
-        } else if (flag_menu){
-            if (flag_clear){
+        } else if (flag_menu) { //Точка входа в меню настройки
+            if (flag_clear) {
                 I2C_LCD_Clear();
                 flag_clear = 0;
             }
-            if (ButtonHandler(RB0)){
+            if (ButtonHandler(RB0)) {
                 Menu(menu);
                 PORTB |= 0x02;
                 menu++;
-                if(menu > 9) menu = 0;
-            } else if (ButtonHandler(RB2)){
+                if (menu == step_menu) menu = 0;
+            } else if (ButtonHandler(RB3)) {
                 TMR1IE = 1;
                 TMR1IF = 0;
                 INT0IE = 1;
@@ -94,9 +169,11 @@ void main(void) {
                 flag_menu = 0;
                 flag_clear = 1;
                 menu = 0;
+                d.sub_menu = 0;
                 tim1Count = 0;
                 PORTB &= ~0x02;
-            }          
+                I2C_LCD_Clear();
+            }
         } else {
             getDataDs3231(0x00);
         }
@@ -117,7 +194,7 @@ unsigned char ButtonHandler(int but) {
     while (but) {
         if (butCount < 10000) {
             butCount++;
-        } else {       
+        } else {
             result = 1;
             break;
         }
@@ -125,7 +202,7 @@ unsigned char ButtonHandler(int but) {
     return result;
 }
 
-void Int0Init(void){
+void Int0Init(void) {
     INT0IE = 1;
     INT0IF = 0;
     INTEDG0 = 1;
@@ -134,7 +211,7 @@ void Int0Init(void){
 void TIM1_init(void) {
     T1CKPS0 = 1;
     T1CKPS1 = 1;
-    TMR1CS = 0;   //Internal clock
+    TMR1CS = 0; //Internal clock
     TMR1L = 0xff; // 65536 - 31250 = 34286 = 0x85EE
     TMR1H = 0x7f;
     T0IE = 1;
