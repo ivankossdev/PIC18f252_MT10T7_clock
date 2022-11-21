@@ -60,56 +60,63 @@ struct Data {
     unsigned int setMin;
     unsigned int setSec;
     unsigned int setDay;
+    unsigned int setYear;
+    unsigned int setMonth;
+    unsigned int setDate;
     unsigned char sub_menu;
 };
 
 struct Data d;
 
+void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) {
+    do {
+        PORTB &= ~0x02;
+        if (d.step == 0) {
+            I2C_LCD_seg_conv(*set0, *set1, *set2);
+            I2C_LCD_print_time();
+            if (ButtonHandler(PORTBbits.RB2)) {
+                (*set0)++;
+            } else if (ButtonHandler(PORTBbits.RB3)) {
+                (*set0)--;
+            }
+        }
+        if (ButtonHandler(PORTBbits.RB0)) {
+            d.step++;
+        }
+        if (d.step == 1) {
+            I2C_LCD_seg_conv(*set0, *set1, *set2);
+            I2C_LCD_print_time();
+            if (ButtonHandler(PORTBbits.RB2)) {
+                (*set1)++;
+            } else if (ButtonHandler(PORTBbits.RB3)) {
+                (*set1)--;
+            }
+        }
+        if (d.step == 2) {
+            I2C_LCD_seg_conv(*set0, *set1, *set2);
+            I2C_LCD_print_time();
+            if (ButtonHandler(PORTBbits.RB2)) {
+                (*set2)++;
+            } else if (ButtonHandler(PORTBbits.RB3)) {
+                (*set2)--;
+            }
+        }
+        if (ButtonHandler(PORTBbits.RB0)) {
+            d.step++;
+        }
+    } while (d.step <= 2);
+}
+
 void SubMenu(unsigned char _sub_menu) {
     d.step = 0;
     switch (_sub_menu) {
         case 0:
-            do {
-                PORTB &= ~0x02;
-                if (d.step == 0) {
-                    I2C_LCD_seg_conv(d.setHr, d.setMin, d.setSec);
-                    I2C_LCD_print_time();
-                    if (ButtonHandler(RB2)) {
-                        d.setHr++;
-                    } else if (ButtonHandler(RB3)) {
-                        d.setHr--;
-                    }
-                }
-                if (ButtonHandler(RB0)) {
-                    d.step++;
-                }
-                if (d.step == 1) {
-                    I2C_LCD_seg_conv(d.setHr, d.setMin, d.setSec);
-                    I2C_LCD_print_time();
-                    if (ButtonHandler(RB2)) {
-                        d.setMin++;
-                    } else if (ButtonHandler(RB3)) {
-                        d.setMin--;
-                    }
-                }
-                if (d.step == 2) {
-                    I2C_LCD_seg_conv(d.setHr, d.setMin, d.setSec);
-                    I2C_LCD_print_time();
-                    if (ButtonHandler(RB2)) {
-                        d.setSec++;
-                    } else if (ButtonHandler(RB3)) {
-                        d.setSec--;
-                    }
-                }
-                if (ButtonHandler(RB0)) {
-                    d.step++;
-                }
-            } while (d.step <= 2);
-
+            SubMenuHandler(&d.setHr, &d.setMin, &d.setSec);
+            SetTime();
             break;
         case 1:
-            I2C_LCD_seg_conv(0, 10, 0);
-            I2C_LCD_print_time();
+            SubMenuHandler(&d.setYear, &d.setMonth, &d.setDate);
+            SetData();
             break;
         case 2:
             I2C_LCD_seg_conv(0, 0, 10);
@@ -142,8 +149,7 @@ void main(void) {
     PORTB = 0x00; //PB4 OUT PB0 INPUT
     TRISB = 0x0D;
     unsigned char menu = 0;
-    //SetData();
-    //SetTime();
+
     while (1) {
         if (flag_tim1) { //Показывает дату по прерыванию 
             I2C_LCD_Clear(); //таймера tim1 
@@ -156,12 +162,12 @@ void main(void) {
                 I2C_LCD_Clear();
                 flag_clear = 0;
             }
-            if (ButtonHandler(RB0)) {
+            if (ButtonHandler(PORTBbits.RB0)) {
                 Menu(menu);
                 PORTB |= 0x02;
                 menu++;
                 if (menu == step_menu) menu = 0;
-            } else if (ButtonHandler(RB3)) {
+            } else if (ButtonHandler(PORTBbits.RB3)) {
                 TMR1IE = 1;
                 TMR1IF = 0;
                 INT0IE = 1;
@@ -242,14 +248,26 @@ void getDataDs3231(unsigned char address) {
         }
     }
     I2C_StopCondition();
+
+    if (address == 0x04) {
+        d.setYear = buf[2];
+        d.setMonth = buf[1];
+        d.setDate = buf[0];
+    } else {
+        d.setHr = buf[2];
+        d.setMin = buf[1];
+        d.setSec = buf[0];
+    }
+
     I2C_LCD_seg_conv(buf[2], buf[1], buf[0]);
     I2C_LCD_print_time();
 }
 
 void SetTime(void) {
-    unsigned int setTime[3] = {
-        33, 26, 8
-    };
+    unsigned int setTime[3];
+    setTime[0] = d.setSec;
+    setTime[1] = d.setMin;
+    setTime[2] = d.setHr;
     unsigned int i;
     I2C_StartCondition();
     I2C_Write_Byte(ds3231);
@@ -262,9 +280,10 @@ void SetTime(void) {
 }
 
 void SetData(void) {
-    unsigned int setTime[3] = {
-        14, 11, 22
-    };
+    unsigned int setTime[3];
+    setTime[0] = d.setDate;
+    setTime[1] = d.setMonth;
+    setTime[2] = d.setYear;
     unsigned int i;
     I2C_StartCondition();
     I2C_Write_Byte(ds3231);
