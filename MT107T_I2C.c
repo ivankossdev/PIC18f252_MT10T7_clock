@@ -1,14 +1,14 @@
 #include "MT107T_I2C.h"
-/*********************** ÌÒ10Ò7*****************************
+/*********************** ÐœÐ¢10Ð¢7*****************************
  *  -------------------------------------------------------
  * | 1 |  2 |  3  |  4  |  5  |  6  |  7  |  8  |  9  | 10 |
  *  -------------------------------------------------------
  * |E+ | V0 | GND | DB0 | DB1 | DB2 | DB3 | WR1 | WR2 | A0 |
  *  -------------------------------------------------------
- * |   |    |     | PÑ3 | PÑ4 | PÑ5 | PÑ6 | PÑ2 | PÑ1 | PÑ0|
+ * |   |    |     | PÐ¡3 | PÐ¡4 | PÐ¡5 | PÐ¡6 | PÐ¡2 | PÐ¡1 | PÐ¡0|
  *  -------------------------------------------------------
  * *********************************************************   L    H
- * Ïîäêëþ÷åíèå äèñïëåÿ                                   0b ADEG FCBh                  
+ * ÐŸÐ¾Ð´ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¸Ðµ Ð´Ð¸ÑÐ¿Ð»ÐµÑ                                   0b ADEG FCBh                  
  * P0-> A0              ****A****  DB0 G(L) DB0 h(H)   0 0b 1110 1110
  * P1-> WR2             F       B  DB1 E(L) DB1 B(H)   1 0b 0000 0110
  * P2-> WR1             *       *  DB2 D(L) DB2 C(H)   2 0b 1111 0010
@@ -30,10 +30,6 @@ struct Segment {
     char S3;
     char S4;
     char S5;
-    char S6;
-    char S7;
-    char S8;
-    char S9;
 };
 
 char Half_Byte(char b) {
@@ -128,7 +124,6 @@ void I2C_LCD_seg_conv(unsigned int h, unsigned int m, unsigned int s) {
 }
 
 void I2C_LCD_print_time(void) {
-    
     I2C_LCD_Send_Char(0, segment.S1, 0);
     I2C_LCD_Send_Char(1, segment.S0, 0);
     I2C_LCD_Send_Char(2, '-', 0);
@@ -137,4 +132,23 @@ void I2C_LCD_print_time(void) {
     I2C_LCD_Send_Char(5, '-', 0);
     I2C_LCD_Send_Char(6, segment.S5, 0);
     I2C_LCD_Send_Char(7, segment.S4, 0);
+}
+
+void I2C_LCD_set_print_time(char point) {
+
+    if (point == 0) {
+        I2C_LCD_Send_Char(0, segment.S1, 0);
+        I2C_LCD_Send_Char(1, segment.S0, 0);
+    }
+    I2C_LCD_Send_Char(2, '-', 0);
+    if (point == 1) {
+        I2C_LCD_Send_Char(3, segment.S3, 0);
+        I2C_LCD_Send_Char(4, segment.S2, 0);
+    }
+    I2C_LCD_Send_Char(5, '-', 0);
+    if (point == 2){
+        I2C_LCD_Send_Char(6, segment.S5, 0);
+        I2C_LCD_Send_Char(7, segment.S4, 0);
+    }
+        
 }
