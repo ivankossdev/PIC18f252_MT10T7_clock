@@ -51,6 +51,7 @@ void interrupt Timers(void) {
 
 unsigned char ButtonHandler(int but);
 void getDataDs3231(unsigned char address);
+void getTemperature(void);
 void SetTime(void);
 void SetData(void);
 
@@ -171,6 +172,9 @@ void main(void) {
             flag_tim1 = 0;
             __delay_ms(1000);
             I2C_LCD_Clear();
+            getTemperature();
+            __delay_ms(1000);
+            I2C_LCD_Clear();
         } else if (flag_menu) { //Точка входа в меню настройки
             if (flag_clear) {
                 I2C_LCD_Clear();
@@ -275,6 +279,25 @@ void getDataDs3231(unsigned char address) {
 
     I2C_LCD_seg_conv(buf[2], buf[1], buf[0]);
     I2C_LCD_print_time();
+}
+
+void getTemperature(void) {
+    unsigned int buf[2];
+
+    I2C_StartCondition();
+    I2C_Write_Byte(ds3231);
+    I2C_Write_Byte(0x11);
+    while (BF);
+    I2C_Idle();
+    SSPIF = 0;
+    RSEN = 1;
+    I2C_IntWait();
+    I2C_Write_Byte(0xD0 | 0x01);
+    buf[0] = I2C_ReceiveByte_Ack();
+    buf[1] = I2C_ReceiveByte_Nack();
+    I2C_StopCondition();
+    I2C_LCD_temp(buf[0], (buf[1] >> 6) * 25);
+    I2C_LCD_print_temp();
 }
 
 void SetTime(void) {
