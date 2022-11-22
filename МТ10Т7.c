@@ -1,59 +1,75 @@
-#include "ÌÒ10Ò7.h"
-/*********************** ÌÒ10Ò7*****************************
+#include "MT107T_I2C.h"
+/*********************** ÐœÐ¢10Ð¢7*****************************
  *  -------------------------------------------------------
  * | 1 |  2 |  3  |  4  |  5  |  6  |  7  |  8  |  9  | 10 |
  *  -------------------------------------------------------
  * |E+ | V0 | GND | DB0 | DB1 | DB2 | DB3 | WR1 | WR2 | A0 |
  *  -------------------------------------------------------
- * |   |    |     | PÑ3 | PÑ4 | PÑ5 | PÑ6 | PÑ2 | PÑ1 | PÑ0|
+ * |   |    |     | PÐ¡3 | PÐ¡4 | PÐ¡5 | PÐ¡6 | PÐ¡2 | PÐ¡1 | PÐ¡0|
  *  -------------------------------------------------------
  * *********************************************************   L    H
- * Ïîäêëþ÷åíèå äèñïëåÿ                                    0b ADEG FCBh                  
- * PÑ0-> A0              ****A****  DB0 G(L) DB0 h(H)   0 0b 1110 1110
- * PÑ1-> WR2             F       B  DB1 E(L) DB1 B(H)   1 0b 0000 0110
- * PÑ2-> WR1             *       *  DB2 D(L) DB2 C(H)   2 0b 1111 0010
- * PÑ3-> DB0             ****G****  DB3 A(L) DB3 F(H)   3 0b 1101 0110
- * PÑ4-> DB1             E       C                      4 0b 0001 1110
- * PÑ5-> DB2             *       *                      5 0b 1101 1100
- * PÑ6-> DB3             ****D**** h*                   6 0b 1111 1100
- *                                                      7 0b 1000 0110
- *                                                      8 0b 1111 1110
- *                                                      9 0b 1101 1110
+ * ÐŸÐ¾Ð´ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¸Ðµ Ð´Ð¸ÑÐ¿Ð»ÐµÑ                                   0b ADEG FCBh                  
+ * P0-> A0              ****A****  DB0 G(L) DB0 h(H)   0 0b 1110 1110
+ * P1-> WR2             F       B  DB1 E(L) DB1 B(H)   1 0b 0000 0110
+ * P2-> WR1             *       *  DB2 D(L) DB2 C(H)   2 0b 1111 0010
+ * P3-> DB0             ****G****  DB3 A(L) DB3 F(H)   3 0b 1101 0110
+ * P4-> DB1             E       C                      4 0b 0001 1110
+ * P5-> DB2             *       *                      5 0b 1101 1100
+ * P6-> DB3             ****D**** h*                   6 0b 1111 1100
+ *                                                     7 0b 1000 0110
+ *                                                     8 0b 1111 1110
+ *                                                     9 0b 1101 1110
+ *                                                     t 0b 0111 1000
  */
-#define A0_ON     PORTC |= 0b00000001 
-#define A0_OFF    PORTC &= 0b11111100 
-#define WR1_ON    PORTC |= 0b00000100
-#define WR1_OFF   PORTC &= 0b11111001
-#define CLR_PORTC PORTC &= 0b00000111
-char R1 = 0, R2 = 0, R3 = 0, R4 = 0;
-char L_Half_Byte(char b) {
+
+char buffer = 0;
+
+struct Segment {
+    char S0;
+    char S1;
+    char S2;
+    char S3;
+    char S4;
+    char S5;
+};
+
+char Half_Byte(char b) {
     char tmp;
     tmp = b & 0x0f;
     return tmp << 3;
 }
 
-void Send_Data(char adr, char L_Data, char H_Data) {
+void I2C_Send_Data(char adr, char L_Data, char H_Data) {
     A0_OFF;
-    CLR_PORTC;
-    PORTC |= L_Half_Byte(adr);
+    CLR_buffer;
+    buffer |= Half_Byte(adr);
+    I2C_SendByteByADDR(buffer, 0x70);
     WR1_ON;
     __delay_us(1);
     WR1_OFF;
-    CLR_PORTC;
+    CLR_buffer;
     A0_ON;
-    PORTC |= L_Half_Byte(L_Data);
+    buffer |= Half_Byte(L_Data);
+    I2C_SendByteByADDR(buffer, 0x70);
     WR1_ON;
     __delay_us(1);
     WR1_OFF;
-    CLR_PORTC;
-    PORTC |= L_Half_Byte(H_Data);
+    CLR_buffer;
+    buffer |= Half_Byte(H_Data);
+    I2C_SendByteByADDR(buffer, 0x70);
     WR1_ON;
     __delay_us(1);
     WR1_OFF;
     __delay_us(2);
 }
 
-char LCD_dig_conv(char digit) {
+void I2C_LCD_Clear(void) {
+    for (unsigned char i = 0; i <= 9; i++) {
+        I2C_Send_Data(i, 0x00, 0x00);
+    }
+}
+
+char I2C_LCD_dig_conv(char digit) {
     char d;
     switch (digit) {
         case 0: d = 0b11101110;
@@ -80,65 +96,79 @@ char LCD_dig_conv(char digit) {
             break;
         case '-': d = 0b00010000;
             break;
+        case 't': d = 0b01111000;
+            break;
     }
     return d;
 }
 
-void LCD_Send_Char(char adress, char conv, char pnt) {
+void I2C_LCD_Send_Char(char adress, char conv, char pnt) {
     char H_byte;
     char L_byte;
-    char tmp = LCD_dig_conv(conv);
+    char tmp = I2C_LCD_dig_conv(conv);
     if (pnt == 1) {
-        tmp |= LCD_dig_conv('.');
+        tmp |= I2C_LCD_dig_conv('.');
     }
     L_byte = tmp & 0x0f;
     H_byte = tmp & 0xf0;
     H_byte = H_byte >> 4;
-    Send_Data(adress, H_byte, L_byte);
+    I2C_Send_Data(adress, H_byte, L_byte);
 }
 
-void LCD_clear() {
-    for (unsigned char i = 0; i <= 9; i++) {
-        Send_Data(i, 0x00, 0x00);
+struct Segment segment;
+
+void I2C_LCD_seg_conv(unsigned int h, unsigned int m, unsigned int s) {
+    segment.S1 = h / 10 % 10;
+    segment.S0 = h % 10;
+    segment.S3 = m / 10 % 10;
+    segment.S2 = m % 10;
+    segment.S5 = s / 10 % 10;
+    segment.S4 = s % 10;
+}
+
+struct Segment temp;
+
+void I2C_LCD_temp(unsigned int TM, unsigned int TL) {
+    temp.S1 = TM / 10 % 10;
+    temp.S0 = TM % 10;
+    temp.S3 = TL / 10 % 10;
+    temp.S2 = TL % 10;
+}
+
+void I2C_LCD_print_temp(void) {
+    I2C_LCD_Send_Char(0, 't', 0);
+    I2C_LCD_Send_Char(2, temp.S1, 0);
+    I2C_LCD_Send_Char(3, temp.S0, 1);
+    I2C_LCD_Send_Char(4, temp.S3, 0);
+    I2C_LCD_Send_Char(5, temp.S2, 0);
+}
+
+void I2C_LCD_print_time(void) {
+    I2C_LCD_Send_Char(0, segment.S1, 0);
+    I2C_LCD_Send_Char(1, segment.S0, 0);
+    I2C_LCD_Send_Char(2, '-', 0);
+    I2C_LCD_Send_Char(3, segment.S3, 0);
+    I2C_LCD_Send_Char(4, segment.S2, 0);
+    I2C_LCD_Send_Char(5, '-', 0);
+    I2C_LCD_Send_Char(6, segment.S5, 0);
+    I2C_LCD_Send_Char(7, segment.S4, 0);
+}
+
+void I2C_LCD_set_print_time(char point) {
+
+    if (point == 0) {
+        I2C_LCD_Send_Char(0, segment.S1, 0);
+        I2C_LCD_Send_Char(1, segment.S0, 0);
     }
-}
-
-void LCD_seg_conv(unsigned int S) {
-    R4 = S / 1000;
-    R3 = S / 100 % 10;
-    R2 = S / 10 % 10;
-    R1 = S % 10;
-}
-
-void LCD_print_segment(unsigned int seg, unsigned char pos) {
-    LCD_seg_conv(seg);
-    LCD_Send_Char((pos + 3), R1, 0);
-    LCD_Send_Char((pos + 2), R2, 0);
-    LCD_Send_Char((pos + 1), R3, 0);
-    LCD_Send_Char(pos, R4, 0);
-}
-
-void LCD_scroll(unsigned int seg, char pos) {
-    LCD_seg_conv(seg);
-    for (char i = pos; i <= 6; i++) {
-        LCD_Send_Char((i + 3), R1, 0);
-        LCD_Send_Char((i + 2), R2, 0);
-        LCD_Send_Char((i + 1), R3, 0);
-        LCD_Send_Char(i, R4, 0);
-        __delay_ms(250);
-        LCD_clear();
+    I2C_LCD_Send_Char(2, '-', 0);
+    if (point == 1) {
+        I2C_LCD_Send_Char(3, segment.S3, 0);
+        I2C_LCD_Send_Char(4, segment.S2, 0);
     }
-    for (char i = 5; i > pos; i--) {
-        LCD_Send_Char((i + 3), R1, 0);
-        LCD_Send_Char((i + 2), R2, 0);
-        LCD_Send_Char((i + 1), R3, 0);
-        LCD_Send_Char(i, R4, 0);
-        __delay_ms(250);
-        LCD_clear();
+    I2C_LCD_Send_Char(5, '-', 0);
+    if (point == 2) {
+        I2C_LCD_Send_Char(6, segment.S5, 0);
+        I2C_LCD_Send_Char(7, segment.S4, 0);
     }
-}
 
-void LCD_Unlock() {
-    Send_Data(0x0f, 0x00, 0x01);
-    LCD_clear();
 }
