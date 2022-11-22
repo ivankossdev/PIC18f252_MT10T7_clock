@@ -74,7 +74,7 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
         PORTB &= ~0x02;
         if (d.step == 0) {
             I2C_LCD_seg_conv(*set0, *set1, *set2);
-            I2C_LCD_print_time();
+            I2C_LCD_set_print_time(d.step);
             if (ButtonHandler(PORTBbits.RB2)) {
                 (*set0)++;
             } else if (ButtonHandler(PORTBbits.RB3)) {
@@ -86,7 +86,7 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
         }
         if (d.step == 1) {
             I2C_LCD_seg_conv(*set0, *set1, *set2);
-            I2C_LCD_print_time();
+            I2C_LCD_set_print_time(d.step);
             if (ButtonHandler(PORTBbits.RB2)) {
                 (*set1)++;
             } else if (ButtonHandler(PORTBbits.RB3)) {
@@ -95,7 +95,7 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
         }
         if (d.step == 2) {
             I2C_LCD_seg_conv(*set0, *set1, *set2);
-            I2C_LCD_print_time();
+            I2C_LCD_set_print_time(d.step);
             if (ButtonHandler(PORTBbits.RB2)) {
                 (*set2)++;
             } else if (ButtonHandler(PORTBbits.RB3)) {
@@ -111,23 +111,29 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
     } while (d.step <= 2);
 }
 
-void SubMenu(unsigned char _sub_menu) {
+void SubMenu(unsigned char _sub_menu, unsigned char menu) {
     d.step = 0;
     d.flag_confirmation = 0;
     switch (_sub_menu) {
         case 0:
+            I2C_LCD_Clear();
+            I2C_LCD_Send_Char(9, menu, 0);
             SubMenuHandler(&d.setHr, &d.setMin, &d.setSec);
             if (d.flag_confirmation) {
                 SetTime();
             }
             break;
         case 1:
+            I2C_LCD_Clear();
+            I2C_LCD_Send_Char(9, menu, 0);
             SubMenuHandler(&d.setYear, &d.setMonth, &d.setDate);
             if (d.flag_confirmation) {
                 SetData();
             }
             break;
         case 2:
+            I2C_LCD_Clear();
+            I2C_LCD_Send_Char(9, menu, 0);
             I2C_LCD_seg_conv(0, 0, 10);
             I2C_LCD_print_time();
             break;
@@ -135,13 +141,12 @@ void SubMenu(unsigned char _sub_menu) {
 }
 
 void Menu(unsigned char menu) {
-    I2C_LCD_Send_Char(9, menu, 0);
     switch (menu) {
-        case 0: SubMenu(d.sub_menu);
+        case 0: SubMenu(d.sub_menu, menu);
             break;
-        case 1: SubMenu(d.sub_menu);
+        case 1: SubMenu(d.sub_menu, menu);
             break;
-        case 2: SubMenu(d.sub_menu);
+        case 2: SubMenu(d.sub_menu, menu);
             break;
     }
     d.sub_menu++;
