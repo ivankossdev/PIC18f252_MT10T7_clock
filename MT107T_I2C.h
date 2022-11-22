@@ -14,5 +14,6 @@ void I2C_LCD_Clear(void);
 void I2C_LCD_Send_Char(char adress, char conv, char pnt);
 void I2C_LCD_seg_conv(unsigned int h, unsigned int m, unsigned int s);
 void I2C_LCD_print_time(void);
+void I2C_LCD_set_print_time(char point);
 #endif	/* MT107T_I2C_H */
 
