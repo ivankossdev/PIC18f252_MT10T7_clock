@@ -78,8 +78,10 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
             I2C_LCD_set_print_time(d.step);
             if (ButtonHandler(PORTBbits.RB2)) {
                 (*set0)++;
+                d.flag_confirmation = 1;
             } else if (ButtonHandler(PORTBbits.RB3)) {
                 (*set0)--;
+                d.flag_confirmation = 1;
             }
         }
         if (ButtonHandler(PORTBbits.RB0)) {
@@ -90,8 +92,10 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
             I2C_LCD_set_print_time(d.step);
             if (ButtonHandler(PORTBbits.RB2)) {
                 (*set1)++;
+                d.flag_confirmation = 1;
             } else if (ButtonHandler(PORTBbits.RB3)) {
                 (*set1)--;
+                d.flag_confirmation = 1;
             }
         }
         if (d.step == 2) {
@@ -99,15 +103,14 @@ void SubMenuHandler(unsigned int *set0, unsigned int *set1, unsigned int *set2) 
             I2C_LCD_set_print_time(d.step);
             if (ButtonHandler(PORTBbits.RB2)) {
                 (*set2)++;
+                d.flag_confirmation = 1;
             } else if (ButtonHandler(PORTBbits.RB3)) {
                 (*set2)--;
+                d.flag_confirmation = 1;
             }
         }
         if (ButtonHandler(PORTBbits.RB0)) {
             d.step++;
-        }
-        if (ButtonHandler(PORTBbits.RB3)) {
-            d.flag_confirmation = 1;
         }
     } while (d.step <= 2);
 }
@@ -119,24 +122,23 @@ void SubMenu(unsigned char _sub_menu, unsigned char menu) {
         case 0:
             I2C_LCD_Clear();
             I2C_LCD_Send_Char(9, menu, 0);
+            getTemperature();
+            break;
+        case 1:
+            I2C_LCD_Clear();
+            I2C_LCD_Send_Char(9, menu, 0);
             SubMenuHandler(&d.setHr, &d.setMin, &d.setSec);
             if (d.flag_confirmation) {
                 SetTime();
             }
             break;
-        case 1:
+        case 2:
             I2C_LCD_Clear();
             I2C_LCD_Send_Char(9, menu, 0);
             SubMenuHandler(&d.setYear, &d.setMonth, &d.setDate);
             if (d.flag_confirmation) {
                 SetData();
             }
-            break;
-        case 2:
-            I2C_LCD_Clear();
-            I2C_LCD_Send_Char(9, menu, 0);
-            I2C_LCD_seg_conv(0, 0, 10);
-            I2C_LCD_print_time();
             break;
     }
 }
@@ -170,9 +172,6 @@ void main(void) {
             I2C_LCD_Clear(); //таймера tim1 
             getDataDs3231(0x04);
             flag_tim1 = 0;
-            __delay_ms(1000);
-            I2C_LCD_Clear();
-            getTemperature();
             __delay_ms(1000);
             I2C_LCD_Clear();
         } else if (flag_menu) { //Точка входа в меню настройки
